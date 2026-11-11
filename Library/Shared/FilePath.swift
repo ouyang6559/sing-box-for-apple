@@ -13,7 +13,18 @@ public enum FilePath {
             .appendingPathComponent("Library", isDirectory: true)
             .appendingPathComponent("Caches", isDirectory: true)
     #elseif os(macOS)
-        public static var sharedDirectory: URL! = defaultSharedDirectory
+        // Local-build fallback: without a provisioning profile the app-group
+        // container is not writable, so fall back to Application Support.
+        public static var sharedDirectory: URL! = {
+            if let dir = defaultSharedDirectory,
+               (try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)) != nil {
+                return dir
+            }
+            let fallback = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("sing-box-local", isDirectory: true)
+            try? FileManager.default.createDirectory(at: fallback, withIntermediateDirectories: true)
+            return fallback
+        }()
     #endif
 
     #if os(iOS)
