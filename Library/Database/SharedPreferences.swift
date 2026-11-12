@@ -165,4 +165,10 @@ public enum SharedPreferences {
 
     public static let enabledDashboardCards = Preference<[String]>("enabled_dashboard_cards", defaultValue: [])
     public static let dashboardCardOrder = Preference<[String]>("dashboard_card_order", defaultValue: [])
+
+    // VPM 登录模式（默认关闭 = 免登录，现有逻辑不变）
+
+    public static let vpmLoginModeEnabled = Preference<Bool>("vpm_login_mode_enabled", defaultValue: false)
+    public static let vpmAPIBaseURL = Preference<String>("vpm_api_base_url", defaultValue: "http://127.0.0.1:7790")
+    public static let vpmDisplayEmail = Preference<String>("vpm_display_email", defaultValue: "")
 }
