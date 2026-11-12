@@ -19,6 +19,7 @@ public extension Notification.Name {
 }
 
 public enum SettingsPage: Hashable {
+    case account
     case app
     case core, packetTunnel, onDemandRules, profileOverride, remoteControl, sponsors
 }
@@ -29,11 +30,13 @@ public struct SettingView: View {
             self
         }
 
-        case app, core, packetTunnel, onDemandRules, profileOverride, remoteControl, sponsors
+        case account, app, core, packetTunnel, onDemandRules, profileOverride, remoteControl, sponsors
 
         #if os(macOS)
             var page: SettingsPage {
                 switch self {
+                case .account:
+                    return .account
                 case .app:
                     return .app
                 case .core:
@@ -58,6 +61,8 @@ public struct SettingView: View {
 
         var title: String {
             switch self {
+            case .account:
+                return String(localized: "Account")
             case .app:
                 return String(localized: "App")
             case .core:
@@ -77,6 +82,8 @@ public struct SettingView: View {
 
         private var iconImage: String {
             switch self {
+            case .account:
+                return "person.crop.circle.fill"
             case .app:
                 return "app.badge.fill"
             case .core:
@@ -98,6 +105,8 @@ public struct SettingView: View {
         var contentView: some View {
             Group {
                 switch self {
+                case .account:
+                    AccountView()
                 case .app:
                     AppView()
                 case .core:
@@ -141,6 +150,8 @@ public struct SettingView: View {
         private static func destinationView(for page: SettingsPage) -> some View {
             Group {
                 switch page {
+                case .account:
+                    AccountView()
                 case .app:
                     AppView()
                 case .core:
@@ -169,6 +180,7 @@ public struct SettingView: View {
     public var body: some View {
         FormView {
             Section {
+                Tabs.account.navigationLink
                 Tabs.app.navigationLink
                 Tabs.core.navigationLink
                 #if !os(tvOS)
