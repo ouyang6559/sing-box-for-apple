@@ -52,4 +52,5 @@ public extension Notification.Name {
     static let vpmLoginStateChanged = Notification.Name("io.nekohasekai.sfa.vpm.loginStateChanged")
     static let vpmEntitlementChanged = Notification.Name("io.nekohasekai.sfa.vpm.entitlementChanged")
     static let vpmOAuthFailed = Notification.Name("io.nekohasekai.sfa.vpm.oauthFailed")
+    static let vpmProfilesChanged = Notification.Name("io.nekohasekai.sfa.vpm.profilesChanged")
 }

@@ -58,6 +58,9 @@ open class ApplicationDelegate: NSObject, NSApplicationDelegate, UNUserNotificat
             await applicationState.initialize()
             do {
                 try await ProfileUpdateTask.configure()
+                NotificationCenter.default.addObserver(forName: .vpmProfilesChanged, object: nil, queue: .main) { _ in
+                    Task { try? await ProfileUpdateTask.configure() }
+                }
                 if launchedAsLogInItem {
                     if await SharedPreferences.startedByUser.get() {
                         if let profile = try await ExtensionProfile.load() {

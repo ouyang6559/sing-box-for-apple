@@ -68,6 +68,9 @@ class ApplicationDelegate: NSObject, UIApplicationDelegate {
     private func setup() {
         do {
             try UIProfileUpdateTask.configure()
+            NotificationCenter.default.addObserver(forName: .vpmProfilesChanged, object: nil, queue: .main) { _ in
+                try? UIProfileUpdateTask.configure()
+            }
             NSLog("setup background task success")
         } catch {
             NSLog("setup background task error: \(error.localizedDescription)")

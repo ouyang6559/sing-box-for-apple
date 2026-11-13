@@ -214,7 +214,16 @@ public class ExtensionEnvironments: ObservableObject {
     public let openSettings = ObjectWillChangePublisher()
     private var cancellables = Set<AnyCancellable>()
 
+    /// 登录模式：确保 VPM 设备/订阅协调器随环境启动（监听登录态变化自动导入订阅）。
+    public let vpmDeviceService = VPMDeviceService.shared
+
     public init() {
+        NotificationCenter.default.publisher(for: .vpmProfilesChanged)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.profileUpdate.send()
+            }
+            .store(in: &cancellables)
         crashReportManager.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
