@@ -1,6 +1,12 @@
 import Library
 import SwiftUI
 
+#if os(macOS)
+    import AppKit
+#elseif canImport(UIKit)
+    import UIKit
+#endif
+
 enum AuthMode: String, CaseIterable, Identifiable {
     case login, register, reset
 
@@ -29,6 +35,105 @@ class AuthViewModel: BaseViewModel {
     @Published var resetToken = ""
     @Published var newPassword = ""
     @Published var statusText = ""
+
+    #if !os(tvOS)
+        @Published var providers: [VPMOAuthProvider] = []
+        @Published var telegramPrompt: String?
+        var telegramCode: String?
+        var telegramStartURL: String?
+        var telegramPollTask: Task<Void, Never>?
+    #endif
+
+    func loadProviders() async {
+        #if !os(tvOS)
+            providers = await VPMOAuthService.shared.fetchProviders()
+        #endif
+    }
+
+    func startOAuth(provider: String) async {
+        #if !os(tvOS)
+            statusText = String(localized: "Waiting for provider…")
+            do {
+                try await VPMOAuthService.shared.startOAuth(provider: provider)
+            } catch let error as VPMError {
+                statusText = error.displayMessage
+            } catch {
+                statusText = error.localizedDescription
+            }
+        #endif
+    }
+
+    func startTelegramLogin() async {
+        #if !os(tvOS)
+            do {
+                let resp = try await VPMOAuthService.shared.telegramLoginStart()
+                telegramCode = resp.code
+                telegramStartURL = resp.startUrl
+                telegramPrompt = String(localized: "Send /start \(resp.code) to @\(resp.botUsername) in Telegram, then wait.")
+                telegramPollTask = Task { await pollTelegramLogin(code: resp.code) }
+            } catch let error as VPMError {
+                statusText = error.displayMessage
+            } catch {
+                statusText = error.localizedDescription
+            }
+        #endif
+    }
+
+    func openTelegramBot() {
+        #if !os(tvOS)
+            guard let startURL = telegramStartURL, let url = URL(string: startURL) else { return }
+            #if os(macOS)
+                NSWorkspace.shared.open(url)
+            #elseif canImport(UIKit)
+                UIApplication.shared.open(url)
+            #endif
+        #endif
+    }
+
+    func cancelTelegramLogin() {
+        #if !os(tvOS)
+            telegramPollTask?.cancel()
+            telegramPollTask = nil
+            telegramPrompt = nil
+            telegramCode = nil
+        #endif
+    }
+
+    #if !os(tvOS)
+        private func pollTelegramLogin(code: String) async {
+            while !Task.isCancelled {
+                do {
+                    let resp = try await VPMOAuthService.shared.telegramLoginStatus(code: code)
+                    switch resp.status {
+                    case "VERIFIED":
+                        await VPMAuthService.storeSession(accessToken: resp.accessToken, email: nil)
+                        telegramPrompt = nil
+                        statusText = ""
+                        return
+                    case "UNBOUND":
+                        statusText = String(localized: "This Telegram account is not linked yet. Bind it on the portal first.")
+                        telegramPrompt = nil
+                        return
+                    case "EXPIRED":
+                        statusText = String(localized: "Login code expired, please retry.")
+                        telegramPrompt = nil
+                        return
+                    default:
+                        break // PENDING
+                    }
+                } catch let error as VPMError {
+                    statusText = error.displayMessage
+                    telegramPrompt = nil
+                    return
+                } catch {
+                    statusText = error.localizedDescription
+                    telegramPrompt = nil
+                    return
+                }
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+            }
+        }
+    #endif
 
     func submit() async {
         statusText = ""
@@ -136,6 +241,48 @@ public struct AuthView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            #if !os(tvOS)
+                Section {
+                    ForEach(viewModel.providers.filter { $0.enabled && $0.provider != "telegram" }, id: \.provider) { provider in
+                        Button(providerTitle(provider.provider)) {
+                            Task { await viewModel.startOAuth(provider: provider.provider) }
+                        }
+                    }
+                    Button(String(localized: "Telegram")) {
+                        Task { await viewModel.startTelegramLogin() }
+                    }
+                } header: {
+                    Text("Or continue with")
+                }
+                if let prompt = viewModel.telegramPrompt {
+                    Section {
+                        Text(prompt)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Button(String(localized: "Open Telegram")) {
+                            viewModel.openTelegramBot()
+                        }
+                        Button(String(localized: "Cancel"), role: .cancel) {
+                            viewModel.cancelTelegramLogin()
+                        }
+                    }
+                }
+            #endif
+        }
+        .task {
+            await viewModel.loadProviders()
+        }
+        .alert($viewModel.alert)
+    }
+
+    private func providerTitle(_ provider: String) -> String {
+        switch provider {
+        case "google":
+            return String(localized: "Continue with Google")
+        case "x":
+            return String(localized: "Continue with X")
+        default:
+            return provider
         }
     }
 

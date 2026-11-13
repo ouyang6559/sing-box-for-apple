@@ -561,6 +561,9 @@ struct MainView: View {
             if let error {
                 alert = AlertState(action: "parse remote profile import link", error: error)
             }
+        } else if url.host == "vpm-auth" {
+            // VPM 第三方授权登录回调（sing-box://vpm-auth?ticket=... 或 ?error=...）。
+            VPMOAuthService.shared.handleAuthCallbackURL(url)
         } else if url.pathExtension == "bpf" {
             do {
                 importProfile = try url.withSecurityScopedAccess {
